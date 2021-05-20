@@ -1,0 +1,15 @@
+#include <avr/io.h>
+
+
+int main(void)
+{
+	 DDRA = 0x00;
+	 DDRB = 0xFF;
+    while (1) 
+    {
+	if (PINA && (1<<PINA0)){
+		 PORTB=~PORTB;  
+		 ABC:if(PINA &&(1<<PINA)){goto ABC;}
+	 }}
+ }
+
