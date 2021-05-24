@@ -7,19 +7,24 @@
 
 #define F_CPU 1000000UL
 #include <avr/io.h>
+  
+  
 void Delay(int n)
 {
-	for(int i=0;i<3*n;i++)
-	{
-		while((TIFR & 0x01)==0);
-		TIFR=0x01;
-	}
+	TCNT0=0x00;
+	TCCR0 = (1<<CS00) | (1<<CS02);
+	int timerOverflowcount=0;
+	while (1){
+	while (TIFR & 0x01){
+		TCNT0=0x00;
+		TIFR =0x01;
+		timerOverflowcount++;}
+		if (timerOverflowcount==4*n){break;}}
 }
 
 int main(void)
 {
 	DDRB=0x01;
-	TCCR0=0x05;
 	while (1)
 	{
 		PORTB=0x01;
