@@ -1,0 +1,45 @@
+
+#include <avr/io.h>
+#include <avr/interrupt.h>
+
+int main(void)
+{
+  ADMUX = 0b11000000; 
+  ADCSRA =0b10010100; 
+	DDRB=0xFF;
+	DDRD=0xFF;
+	TCCR1A |= (1<<WGM10) | (1<<WGM11);
+	TCCR1B |= (1<<WGM12);
+	TCCR1B &= ~(1<<WGM13);                   
+	TCCR1A |= (1<<COM1A1);
+	TCCR1A &= ~(1<<COM1A0);     
+	TCCR1B |= (1<<CS10) ;
+	TCCR1B &= ~(1<<CS12) & ~ (1<<CS11);
+	TCCR0 |= 1<<WGM00 | 1<<WGM01;
+	TCCR0 |= 1<<CS00;
+	TCCR0 &= ~(1<<CS01) & ~(1<<CS02);  
+	sei(); 
+    ADCSRA |= 1<<ADSC; 
+    while (1) 
+    {
+		
+    }
+}
+	ISR(ADC_vect)
+	{
+		uint8_t res = ADCH;
+		switch(ADMUX)
+		{
+			case 0b01100000:
+			OCR0=res;
+			ADMUX = 0b01100001;
+			break;
+			
+			case 0b01100001:
+			OCR1A=res;
+			ADMUX = 0b01100000;
+			break;
+		}
+		ADCSRA |= 1<<ADSC; 
+	}
+
