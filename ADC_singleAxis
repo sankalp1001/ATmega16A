@@ -12,9 +12,6 @@ int main(void)
 {
 	ADMUX = 0b0110010; //setting areff pin as ref to adc,selecting the 10bits/16 which store the data and selecting the input channel
 	ADCSRA =0b10001000; //enabling adc and adc interrupt. also setting the prescaler to 64 for adc frequency
-	
-	sei(); // GLOBAL INTERRUPT ENABLE
-	ADCSRA |= 1<<ADSC; // ADC CONERSION
 	DDRB=0xFF;
 	TCCR0 |= 1<<WGM00 | 1<<WGM01 ;// using  timer 0 in fast PWM mode
 	TCCR0 |= 1<<CS00;
