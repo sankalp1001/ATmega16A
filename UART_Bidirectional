@@ -1,0 +1,49 @@
+#include <avr/io.h>
+
+void USART_Init(void){
+	UCSRB |= (1 << RXEN) | (1 << TXEN);/* Turn on transmission and reception */
+	UCSRC |= (1 << URSEL) | (1 << UCSZ1) | (1 << UCSZ0);/* Use 8-bit character sizes */
+	UBRRL = 6;   //baudrate
+	UCSRA |=(1<<U2X);
+}
+
+int main(void)
+{
+	
+	DDRD |=(1 <<PIND1);
+	DDRD &= ~(1 << PIND0);
+	
+	DDRB |=(1<<PINB0);
+	DDRA &= ~(1<<PINA0);
+	
+	unsigned char data;
+	USART_Init();
+ 
+while(1){
+	
+	if(PINA & (1<<PINA0))
+	{
+		while(!(UCSRA & (1<<UDRE)));
+		UDR=0b11110000;
+		
+	}
+	else
+	{
+		while(!(UCSRA & (1<<UDRE)));
+		UDR=0b00000000;
+	}
+	
+	
+	while (! (UCSRA & (1 << RXC)) );
+	data = UDR;
+	if (data == 0b11110000)
+	{
+		PORTB|=(1<<PORTB0);
+	}
+	else
+	{
+		PORTB &=~(1<<PORTB0);
+	}
+	
+}
+}
