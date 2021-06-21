@@ -1,0 +1,143 @@
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <math.h>
+
+long int Map(long int inValue,long int frmLow,long int frmHigh,long int toLow,long int toHigh){
+	long int outValue;
+	outValue= toLow + (toHigh-toLow)*(inValue-frmLow)/(frmHigh-frmLow);
+	return(outValue);
+}
+long int x=0;
+long  int y=0;
+long int spdL;
+long int spdR;
+long int low_val,tenbit_val,joyval;
+ 
+int main(void)
+{
+   
+	TCCR0 |= 1<<WGM00 | 1<<WGM01 | 1<<COM01 | 1<<CS00;//setup timer0
+	
+	TCCR2 |= 1<<WGM20 | 1<<WGM21 | 1<<COM21 | 1<<CS20;//setup timer2
+	
+	DDRB |= 1<<DDB3; 
+	DDRD |= 1<<DDD7;
+	
+	DDRB |= 1<<PINB2 | 1<<PINB1;
+	
+	PORTB &= ~(1<<PINB2); 
+	PORTB &= ~(1<<PINB1); 
+	
+	ADCSRA |= 1<<ADIE;
+	ADMUX |= 1<<REFS0;
+	ADMUX |= 1<<ADLAR;
+	ADCSRA |= 1<<ADEN;
+	sei(); 
+	ADCSRA |= 1<<ADSC; 
+	 while (1)
+	 {
+	 }
+
+}
+ISR(ADC_vect){
+	low_val=ADCL;
+	tenbit_val = (ADCH<<2 | low_val>>6); 
+	joyval=tenbit_val;
+	
+	
+	switch(ADMUX)
+	{
+		case 0x60:
+		x=joyval;
+		ADMUX = 0x61; 
+		break;
+		case 0x61:
+		y=joyval;
+		ADMUX = 0x60;
+		break;
+	}
+	//BUFFER :
+	if(y>400 && y<=500)
+	{y=512;}
+	if(x>400 && x<=500)
+	{x=512;}
+	 //left direction 
+	    if(x+y<1023){
+		PORTB |= (1<<PINB1);
+		  }
+	    else{
+	    PORTB &= ~(1<<PORTB1);	}
+		
+	
+	    //right direction
+	    if(y>x){
+			PORTB |= (1<<PORTB2);
+	    }
+	    else {PORTB &= ~(1<<PORTB2); } 
+			
+
+	    // 1st octant
+	    if(y>=x && y<=512){
+		    spdL=Map(x,512,0,0,255);
+		    spdR=Map(y,512,x,spdL ,0);
+			 
+			
+		}
+	    //2nd octant
+	    else if(x+y<=1023 && y>512){
+		    spdR=Map(x,512,0,0,255);
+		    spdL=Map(y,512,1023-x,spdR,0);
+			 
+	    }
+	    //3rd octant
+	    else if(x+y>1023 && x<=512){
+		    spdR=Map(y,512,1023,0,255);
+		    spdL=Map(x,512,1023-x,spdR,0);
+			 
+	    }
+
+	    //4th octant
+	    else if(y>=x && x>508){
+		    spdL=Map(y,512,1023,0,255);
+		    spdR=Map(x,512,y,spdL,0);
+	    }
+	    //5th octant
+	    else if(x>=y && y>512){
+		    spdL=Map(x,512,1023,0,255);
+		    spdR=Map(y,512,x,spdL,0);
+	    }
+	    //6th octant
+	    else if(x+y>=1023 && y<512){
+		    spdR=Map(x,512,1023,0,255);
+		    spdL=Map(y,512,1023-x,spdR,0);
+
+	    }
+	    //7th octant
+	    else if(x+y<1023 && x>512){
+		    spdR=Map(x,512,1023,0,255);
+		    spdL=Map(y,512,1023-x,spdR,0);
+			 
+		
+	    }
+	    //8th octant
+	    else if(y<=x && x<=512){
+		    spdL=Map(y,512,0,0,255);
+		    spdR=Map(x,512,y,spdL,0);
+			
+			
+		 if(x==512 && y==512){
+			 spdL=0;
+			 spdR=0;
+			 PORTB &= ~(1<<PORTB1);
+			 PORTB &= ~(1<<PORTB2);
+	    }
+		if(spdL<150){spdL=0;
+		}
+		if(x<50){PORTB &= ~(1<<PORTB2);} 
+	
+		
+			}
+		   OCR2 = spdL;
+		   OCR0 = spdR;
+		   ADCSRA |= 1<<ADSC;
+		}
