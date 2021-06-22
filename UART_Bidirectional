@@ -3,7 +3,7 @@
 void USART_Init(void){
 	UCSRB |= (1 << RXEN) | (1 << TXEN);/* Turn on transmission and reception */
 	UCSRC |= (1 << URSEL) | (1 << UCSZ1) | (1 << UCSZ0);/* Use 8-bit character sizes */
-	UBRRL = 6;   //baudrate
+	UBRRL = 12;   //baudrate
 	UCSRA |=(1<<U2X);
 }
 
@@ -13,7 +13,7 @@ int main(void)
 	DDRD |=(1 <<PIND1);
 	DDRD &= ~(1 << PIND0);
 	
-	DDRB |=(1<<PINB0);
+	DDRB |=0xFF;
 	DDRA &= ~(1<<PINA0);
 	
 	unsigned char data;
