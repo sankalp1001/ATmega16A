@@ -1,0 +1,81 @@
+//master
+#define F_CPU 1000000UL
+
+#include <avr/io.h>
+
+
+void SPI_Write(unsigned char data)		// SPI write data function 
+{
+	SPDR = data;			/* Write data to SPI data register */
+	while(!(SPSR & (1<<SPIF)));	/* Wait till transmission complete */
+}
+
+int main(void)
+{
+	DDRB |= (1<<DDB5)|(1<<DDB7)|(1<<DDB4);	// Make MOSI, SCK, as Output pin
+	
+	DDRB &= ~(1<<DDB5);			// Make MISO pin as input pin
+	PORTB |= (1<<DDB4);			// Make high on SS pin
+	SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR0);	// Enable SPI in master mode with Fosc/16
+	SPSR &= ~(1<<SPI2X);			/* Disable speed doubler */
+
+	
+	
+	DDRA=0x00;
+	DDRC=0xFF;
+  
+     while (1)
+     {
+	     if(PINA &(1<<PINA0)){
+		    SPI_Write(0xFF); 
+			PORTC = 0x01;
+	     }
+	     else {
+			 SPI_Write(0x00);
+		     PORTC=0x00;
+	     }
+	 }
+}
+
+
+
+//slave
+
+#define F_CPU 1000000UL
+#include <avr/io.h>
+
+
+
+char SPI_Read()				/* SPI read data function */
+{
+	while(!(SPSR & (1<<SPIF)));	/* Wait till reception complete */
+	return(SPDR);			/* Return received data */
+}
+
+
+
+int main(void)
+{
+  
+  DDRB |= (1<<DDB6);			// Make MISO pin as output pin
+  
+  SPCR = (1<<SPE);			// Enable SPI in slave mode
+
+   DDRC=0xFF;
+   DDRD=0xFF;
+  // DDRA=0xFF;
+    while (1) 
+    {
+    unsigned char data;
+	
+	 PORTD=0xFF;
+		
+	data=SPI_Read();
+	
+	 
+		if(data==0xFF){PORTC = 0xFF;}
+			
+		else if(data==0x00){PORTC=0x00;}
+		}
+}
+
