@@ -1,0 +1,242 @@
+#define F_CPU 1000000UL
+
+#include <avr/io.h>
+
+
+void UART_Init(void)
+{
+	unsigned int ubrr = 25;
+	UBRRH = (unsigned char)(ubrr>>8);
+	UBRRL = (unsigned char)ubrr;
+	
+	UCSRB |=(1<<TXEN);
+	
+	
+	UCSRC &= ~(1<<U2X);
+	
+	UCSRC  |= (1<<URSEL)|(1<<USBS)|(3<<UCSZ0);
+}
+
+void UART_Transmit(unsigned char data)
+{
+	while(!(UCSRA & (1<<UDRE)));
+	UDR = data;
+}
+
+int main(void)
+{
+	UART_Init();
+	
+
+	DDRA = 0b00000000;
+	ADMUX = (1<<REFS0);
+	
+	
+	ADCSRA = (1<<ADEN)|(1<<ADPS1) |(1<<ADPS0);
+	
+	ADMUX &=~(1<<ADLAR);
+	ADCSRA |=1<<ADIE;
+	
+	ADCSRA |=1<<ADSC;
+	
+	int x1=0,y1=0,x2=0,y2=0;
+	
+	while(1)
+	{
+		uint8_t L = ADCL; 
+		uint16_t H = ADCH<<8 | L; 
+		
+		switch (ADMUX)
+		{
+			case 0x60:
+			
+			x1 = (H | 0b00000001);
+			x2 = H>>8;
+			UART_Transmit(x1);
+			UART_Transmit(x2);
+			ADMUX = 0x61; 
+			break;
+			
+			case 0x61:
+			y1 = (H & 0b11111110);
+			y2 = H>>8;
+			UART_Transmit(y1);
+			UART_Transmit(y2);
+			ADMUX = 0x60; 
+			break;
+		}
+		
+		ADCSRA |= 1<<ADSC;
+	}
+}
+
+//RECIEVER
+
+#define F_CPU 1000000UL
+
+#include <avr/io.h>
+
+int spdR;
+int spdL;
+int x=0;
+int y=0;
+
+void UART_Init(void)
+{
+	unsigned int ubrr = 25;
+	UBRRH = (unsigned char)(ubrr>>8);
+	UBRRL = (unsigned char)ubrr;
+	
+
+	UCSRB |=(1<<RXEN);
+	
+	UCSRC &= ~(1<<U2X);
+	
+	UCSRC = (1<<URSEL)|(1<<USBS)|(3<<UCSZ0);
+}
+
+void Timers_init()
+{
+	
+	TCCR0 |= (1<<WGM00) |(1<<WGM01)|(1<<COM01) |(1<<CS00);
+	
+	TCCR2 |= (1<<WGM20) |(1<<WGM21) |(1<<COM21) |(1<<CS20);
+
+	
+	DDRB |= 1<<PINB3; 
+	DDRD |= 1<<PIND7; 
+}
+
+unsigned char UART_Receive(void)
+{
+	while(!(UCSRA & (1<<RXC)));
+	return UDR;
+}
+
+long int Map(long int inValue,long int frmLow,long int frmHigh,long int toLow,long int toHigh){
+	long int outValue;
+	outValue= toLow + (toHigh-toLow)*(inValue-frmLow)/(frmHigh-frmLow);
+	return(outValue);
+}
+
+
+int main(void)
+{
+	DDRB |=(1<<PINB1) |(1<<PINB0); 
+	
+	UART_Init();
+	
+	Timers_init();
+	
+	uint16_t Rx=0;
+	int L=0,H=0;
+	
+
+	
+	while(1)
+	{
+		
+		L = UART_Receive();
+		H = UART_Receive();
+		
+		Rx = H<<8 | L;
+		
+		if((Rx & 0b00000001) == 0b00000001) 
+		{
+			
+			x = Rx;
+		}
+		else if((Rx & 0b00000000) == 0b00000000)
+		{
+			
+			y = Rx;
+		}
+		
+		
+	//BUFFER :
+	if(y>300 && y<=700)
+	{y=512;}
+	if(x>300 && x<=700)
+	{x=512;}
+	
+	//left direction
+	if(x+y<1023){
+		PORTB |= (1<<PINB0);
+	}
+	else{
+	PORTB &= ~(1<<PORTB0);	}
+	
+	
+	//right direction
+	if(y>x){
+		PORTB |= (1<<PORTB2);
+	}
+	else {PORTB &= ~(1<<PORTB2); }
+	
+
+	// 1st octant
+	if(y>=x && y<=512){
+		spdL=Map(x,512,0,0,255);
+		spdR=Map(y,512,x,spdL ,0);
+		
+		
+	}
+	//2nd octant
+	else if(x+y<=1023 && y>512){
+		spdR=Map(x,512,0,0,255);
+		spdL=Map(y,512,1023-x,spdR,0);
+		
+	}
+	//3rd octant
+	else if(x+y>1023 && x<=512){
+		spdR=Map(y,512,1023,0,255);
+		spdL=Map(x,512,1023-x,spdR,0);
+		
+	}
+
+	//4th octant
+	else if(y>=x && x>508){
+		spdL=Map(y,512,1023,0,255);
+		spdR=Map(x,512,y,spdL,0);
+	}
+	//5th octant
+	else if(x>=y && y>512){
+		spdL=Map(x,512,1023,0,255);
+		spdR=Map(y,512,x,spdL,0);
+	}
+	//6th octant
+	else if(x+y>=1023 && y<512){
+		spdR=Map(x,512,1023,0,255);
+		spdL=Map(y,512,1023-x,spdR,0);
+
+	}
+	//7th octant
+	else if(x+y<1023 && x>512){
+		spdR=Map(x,512,1023,0,255);
+		spdL=Map(y,512,1023-x,spdR,0);
+		
+		
+	}
+	//8th octant
+	else if(y<=x && x<=512){
+		spdL=Map(y,512,0,0,255);
+		spdR=Map(x,512,y,spdL,0);
+	}
+	
+	if(x==512 && y==512){
+		spdL=0;
+		spdR=0;
+		PORTB &= ~(1<<PORTB1);
+		PORTB &= ~(1<<PORTB2);
+	}
+	if(spdL<150){spdL=0;
+	}
+	if(x<50){PORTB &= ~(1<<PORTB2);}
+	
+	
+	
+	
+	OCR2 = spdL;
+	OCR0 = spdR;
+}
+}
