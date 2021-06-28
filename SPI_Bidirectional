@@ -50,3 +50,59 @@ int main(void)
 		
 	}
 }
+
+//master
+#define F_CPU 1000000UL
+#include <avr/io.h>
+#include <util/delay.h>
+
+
+
+unsigned char datatransf(unsigned char data)
+{
+	SPDR =data;
+	while(!(SPSR & (1<<SPIF)));
+	return SPDR;
+}
+
+int main(void)
+{
+	
+	DDRB |=(1<<PINB5) | (1<<PINB7) | (1<<PINB4);      
+	DDRB &= ~(1<<PINB6);  
+	SPCR |=(1<<SPE) | (1<<MSTR) | (1<<SPR0);       
+	SPSR &= ~(1<<SPI2X);	
+	
+	DDRA 0x00;   
+	DDRC=0xFF; 
+	
+	unsigned char DataIn;
+	unsigned char DataOut;
+	
+	while (1)
+	{
+		
+		
+		if(PINA & (1<<PINA0))
+		{
+			DataOut=0xF0;
+		}
+		else
+		{
+			
+			DataOut=0x00;
+		}
+		DataIn=0x00;
+	    DataIn=datatransf(DataOut);
+		
+		if (DataIn == 0xA0)
+		{
+			PORTC = 0xFF;
+		}
+		else
+		{
+			PORTC = 0x00;
+		}
+		
+	}
+}
