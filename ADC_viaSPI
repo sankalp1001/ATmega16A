@@ -1,0 +1,130 @@
+//master
+/*
+ * ADC_viaSPI_Master.c
+ *
+ * Created: 28-06-2021 11:27:02
+ * Author : small
+ */ 
+
+#include <avr/io.h>
+#include <avr/interrupt.h>
+
+
+void SPI_Write(unsigned char data)		// SPI write data function
+{
+	SPDR = data;			/* Write data to SPI data register */
+	while(!(SPSR & (1<<SPIF)));	/* Wait till transmission complete */
+}
+
+int main(void)
+{
+	DDRB |=(1<<PINB5) | (1<<PINB7) | (1<<PINB4);
+	DDRB &= ~(1<<PINB6);
+	SPCR |=(1<<SPE) | (1<<MSTR) | (1<<SPR0);
+	SPSR &= ~(1<<SPI2X);
+	
+	DDRA=0x00;
+	ADCSRA |= 1<<ADIE|(1<<ADPS1) |(1<<ADPS0);
+	ADMUX |= 1<<REFS0;
+	ADMUX &= ~(1<<ADLAR);
+	ADCSRA |= 1<<ADEN;
+	sei();
+	ADCSRA |= 1<<ADSC;
+	
+	int x1=0,y1=0,x2=0,y2=0;
+    
+    while (1) 
+    {	
+		    uint8_t L = ADCL;
+			uint16_t H = ADCH<<8 | L;
+			
+			switch (ADMUX)
+			{
+				case 0x60:
+				
+				x1 = (H | 0b00000001);
+				x2 = H>>8;
+				SPI_Write(x1);
+			   SPI_Write(x2);
+				ADMUX = 0x61;
+				break;
+				
+				case 0x61:
+				y1 = (H & 0b11111110);
+				y2 = H>>8;
+				SPI_Write(y1);
+				SPI_Write(y2);
+				ADMUX = 0x60;
+				break;
+			}
+			
+			ADCSRA |= 1<<ADSC;
+		
+	}
+
+ }
+ 
+//slave 
+/*
+ * ADC_viaSPI_slave.c
+ *
+ * Created: 28-06-2021 12:08:24
+ * Author : small
+ */ 
+
+#include <avr/io.h>
+#define F_CPU 1000000UL
+int x;
+int y;
+
+char SPI_Read()				/* SPI read data function */
+{
+	while(!(SPSR & (1<<SPIF)));	/* Wait till reception complete */
+	return(SPDR);			/* Return received data */
+}
+
+long int Map(long int inValue,long int frmLow,long int frmHigh,long int toLow,long int toHigh){
+	long int outValue;
+	outValue= toLow + (toHigh-toLow)*(inValue-frmLow)/(frmHigh-frmLow);
+	return(outValue);
+}
+
+
+int main(void)
+{
+   TCCR0 |= 1<<WGM00 | 1<<WGM01 | 1<<COM01 | 1<<CS00;//setup timer0
+   
+   TCCR2 |= 1<<WGM20 | 1<<WGM21 | 1<<COM21 | 1<<CS20;//setup timer2
+	
+		DDRB |= (1<<DDB6);			// Make MISO pin as output pin
+		
+		SPCR = (1<<SPE);			// Enable SPI in slave mode
+
+		DDRC=0xFF;
+		DDRD=0xFF;
+		
+		
+		uint16_t Rx=0;
+		int l=0,h=0; 
+    while (1) 
+    {
+		l=SPI_Read();
+		h=SPI_Read();
+		
+		Rx=h<<8|l;
+		
+		if((Rx & 0b00000001)==0b00000001){
+			x=Rx;			
+		}
+		else if((Rx & 0b00000000)==0b00000000){
+			y=Rx;
+			
+    }
+	 x= Map(x,0,1023,0,255);
+	 y= Map(y,0,1023,0,255);
+	 
+    OCR0 = x;
+	OCR2 = y;
+}
+
+}
