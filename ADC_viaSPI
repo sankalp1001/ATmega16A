@@ -8,7 +8,7 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-
+#define F_CPU 1000000UL
 
 void SPI_Write(unsigned char data)		// SPI write data function
 {
@@ -45,7 +45,7 @@ int main(void)
 				x1 = (H | 0b00000001);
 				x2 = H>>8;
 				SPI_Write(x1);
-			   SPI_Write(x2);
+			        SPI_Write(x2);
 				ADMUX = 0x61;
 				break;
 				
@@ -123,7 +123,7 @@ int main(void)
 	 x= Map(x,0,1023,0,255);
 	 y= Map(y,0,1023,0,255);
 	 
-    OCR0 = x;
+        OCR0 = x;
 	OCR2 = y;
 }
 
